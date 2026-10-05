@@ -1,6 +1,8 @@
 # Redmi Buds 4: чтение заряда L / R / кейс — заметки по реверсу
 
-Источник: `BluetoothExtension.apk` (Xiaomi), декомпилирован jadx 1.5.6 в `decompiled/`.
+Источник: `BluetoothExtension.apk` (Xiaomi), декомпилирован jadx 1.5.6 в `decompiled/`. Всё это лежит в `research/` (в git не коммитится), команды ниже запускать оттуда.
+
+Происхождение apk: системное приложение `com.xiaomi.bluetooth` (`versionName 13` / `versionCode 33` — это версия платформы, не приложения), снято с POCO F3 ~2026-10-05, прошивка не записана, телефона больше нет. SHA-256: `b23c7b4395126ef521c14746028da459beea2cb2a297b022860240ea57b878fd`. Снять заново с другого Xiaomi: `adb shell pm path com.xiaomi.bluetooth`, затем `adb pull <путь> BluetoothExtension.apk` — код может отличаться от этой версии.
 
 Декомпиляция (нужен JDK 11+; аналог `jadx/bin/jadx`, но без зависимости от `JAVA_HOME`):
 ```

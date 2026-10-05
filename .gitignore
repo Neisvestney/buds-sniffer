@@ -1,3 +1,6 @@
 .idea/
 .DS_Store
 Thumbs.db
+research/BluetoothExtension.apk
+research/decompiled/
+research/jadx-1.5.6/
