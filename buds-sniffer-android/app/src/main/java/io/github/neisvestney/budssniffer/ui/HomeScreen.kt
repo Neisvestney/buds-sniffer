@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,15 +27,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.neisvestney.budssniffer.buds.BatteryRepository
 import io.github.neisvestney.budssniffer.buds.LinkStatus
-import io.github.neisvestney.budssniffer.buds.format
 import io.github.neisvestney.budssniffer.service.BudsAssociation
 import io.github.neisvestney.budssniffer.service.BudsService
+import io.github.neisvestney.budssniffer.ui.gauge.BudGaugePill
 import io.github.neisvestney.budssniffer.widget.BudsWidget
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -84,31 +82,15 @@ private fun BatteryCard() {
     val link by BatteryRepository.link.collectAsState()
     val live = link == LinkStatus.Connected
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                Modifier.fillMaxWidth().alpha(if (live) 1f else 0.4f),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Level("L", battery?.left.format(live))
-                Level("R", battery?.right.format(live))
-                Level("Case", battery?.case.format(live))
-            }
-            Text(
-                "Link: $link" + (battery?.let {
-                    " · updated ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it.updatedAt))}"
-                } ?: ""),
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-    }
-}
-
-@Composable
-private fun Level(label: String, value: String) {
-    Column {
-        Text(value, style = MaterialTheme.typography.headlineMedium)
-        Text(label, style = MaterialTheme.typography.labelMedium)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        BudGaugePill(battery, live)
+        Text(
+            "Link: $link" + (battery?.let {
+                " · updated ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it.updatedAt))}"
+            } ?: ""),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
     }
 }
 

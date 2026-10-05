@@ -3,9 +3,6 @@ package io.github.neisvestney.budssniffer.widget
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.RectF
-import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,7 +11,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -53,30 +49,21 @@ import androidx.glance.visibility
 import io.github.neisvestney.budssniffer.MainActivity
 import io.github.neisvestney.budssniffer.R
 import io.github.neisvestney.budssniffer.buds.BatteryRepository
-import io.github.neisvestney.budssniffer.buds.BudLevel
 import io.github.neisvestney.budssniffer.buds.LinkStatus
+import io.github.neisvestney.budssniffer.ui.gauge.GaugeSpec
+import io.github.neisvestney.budssniffer.ui.gauge.GaugeState
+import io.github.neisvestney.budssniffer.ui.gauge.drawGaugeArc
+import io.github.neisvestney.budssniffer.ui.gauge.gaugeStates
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
-private val Background = ColorProvider(Color(0xE0141416))
-private val Foreground = Color(0xFFFFFFFF)
-private val Dimmed = Color(0x80FFFFFF)
-private val Track = Color(0x33FFFFFF)
-private val ChargingArc = Color(0xFF59C376)
+private val Background = ColorProvider(GaugeSpec.WidgetBackground)
+private val Foreground = GaugeSpec.WidgetForeground
+private val Dimmed = Foreground.copy(alpha = GaugeSpec.DIMMED_ALPHA)
+private val Track = Foreground.copy(alpha = GaugeSpec.TRACK_ALPHA)
 
-private val GaugeSize = 52.dp
-private val GaugeHeight = 59.dp
-private val GaugeStroke = 7.5.dp
-private val IconSize = 24.dp
-// Matches the digits' cap height at 13sp bold.
-private val BoltHeight = 9.5.dp
-private val BoltWidth = 5.2.dp
 // Oversized on purpose: the outline radius is clamped to half the height, giving a stadium.
 private val PillRadius = 100.dp
-
-// Gauge is open at the bottom, like One UI's battery widget.
-private const val ARC_START = 160f
-private const val ARC_SWEEP = 220f
 
 class BudsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -99,48 +86,44 @@ class BudsWidget : GlanceAppWidget() {
                         .fillMaxWidth()
                         .background(Background)
                         .cornerRadius(PillRadius)
-                        // Extra bottom padding balances the arc's open bottom, which reads as empty space.
-                        .padding(start = 12.dp, top = 7.dp, end = 12.dp, bottom = 12.dp),
+                        .padding(
+                            start = GaugeSpec.PillPaddingHorizontal,
+                            top = GaugeSpec.PillPaddingTop,
+                            end = GaugeSpec.PillPaddingHorizontal,
+                            bottom = GaugeSpec.PillPaddingBottom,
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Gauge(R.drawable.ic_widget_bud_left, "Left", battery?.left, live)
-                    Gauge(R.drawable.ic_widget_bud_right, "Right", battery?.right, live)
-                    Gauge(R.drawable.ic_widget_case, "Case", battery?.case, live)
+                    for (state in gaugeStates(battery, live)) Gauge(state)
                 }
             }
         }
     }
 
     @Composable
-    private fun RowScope.Gauge(@DrawableRes icon: Int, name: String, level: BudLevel?, live: Boolean) {
-        val charging = live && level?.charging == true
-        val description = buildString {
-            append(name).append(' ').append(level?.let { "${it.percent}%" } ?: "unknown")
-            if (charging) append(", charging")
-        }
-        val content = if (live) Foreground else Dimmed
-        val arc = if (charging) ChargingArc else content
+    private fun RowScope.Gauge(state: GaugeState) {
+        val content = if (state.live) Foreground else Dimmed
+        val arc = if (state.charging) GaugeSpec.ChargingColor else content
         val density = LocalContext.current.resources.displayMetrics.density
-        val fraction = (level?.percent ?: 0).coerceIn(0, 100) / 100f
-        val bitmap = remember(density, fraction, arc) {
-            arcBitmap(GaugeSize.px(density), GaugeStroke.value * density, fraction, arc.toArgb())
+        val bitmap = remember(density, state.fraction, arc) {
+            arcBitmap(GaugeSpec.Size.px(density), GaugeSpec.Stroke.value * density, state.fraction, arc.toArgb())
         }
         Box(
-            modifier = GlanceModifier.defaultWeight().semantics { contentDescription = description },
+            modifier = GlanceModifier.defaultWeight().semantics { contentDescription = state.description },
             contentAlignment = Alignment.Center,
         ) {
             // The number sits inside the arc's bottom gap, so the gauge is only slightly taller than the arc.
-            Box(modifier = GlanceModifier.width(GaugeSize).height(GaugeHeight), contentAlignment = Alignment.TopCenter) {
+            Box(modifier = GlanceModifier.width(GaugeSpec.Size).height(GaugeSpec.Height), contentAlignment = Alignment.TopCenter) {
                 Image(
                     provider = ImageProvider(bitmap),
                     contentDescription = null,
-                    modifier = GlanceModifier.size(GaugeSize),
+                    modifier = GlanceModifier.size(GaugeSpec.Size),
                 )
-                Box(modifier = GlanceModifier.size(GaugeSize), contentAlignment = Alignment.Center) {
+                Box(modifier = GlanceModifier.size(GaugeSpec.Size), contentAlignment = Alignment.Center) {
                     Image(
-                        provider = ImageProvider(icon),
+                        provider = ImageProvider(state.slot.icon),
                         contentDescription = null,
-                        modifier = GlanceModifier.size(IconSize),
+                        modifier = GlanceModifier.size(GaugeSpec.IconSize),
                         colorFilter = ColorFilter.tint(ColorProvider(content)),
                     )
                 }
@@ -149,31 +132,31 @@ class BudsWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.Bottom,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Number(level, charging, content)
+                    Number(state, content)
                 }
             }
         }
     }
 
     @Composable
-    private fun Number(level: BudLevel?, charging: Boolean, content: Color) {
+    private fun Number(state: GaugeState, content: Color) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Toggle visibility instead of omitting: RemoteViews reapply can keep stale children.
             Image(
                 provider = ImageProvider(R.drawable.ic_widget_bolt),
                 contentDescription = null,
                 modifier = GlanceModifier
-                    .width(BoltWidth)
-                    .height(BoltHeight)
-                    .visibility(if (charging) Visibility.Visible else Visibility.Gone),
+                    .width(GaugeSpec.BoltWidth)
+                    .height(GaugeSpec.BoltHeight)
+                    .visibility(if (state.charging) Visibility.Visible else Visibility.Gone),
                 colorFilter = ColorFilter.tint(ColorProvider(content)),
             )
-            Spacer(GlanceModifier.width(if (charging) 1.dp else 0.dp))
+            Spacer(GlanceModifier.width(if (state.charging) GaugeSpec.BoltGap else 0.dp))
             Text(
-                text = level?.percent?.toString() ?: "—",
+                text = state.text,
                 style = TextStyle(
                     color = ColorProvider(content),
-                    fontSize = 13.sp,
+                    fontSize = GaugeSpec.NumberSize,
                     fontWeight = FontWeight.Bold,
                 ),
             )
@@ -189,20 +172,7 @@ private fun Dp.px(density: Float) = (value * density).roundToInt().coerceAtLeast
 
 private fun arcBitmap(sizePx: Int, strokePx: Float, fraction: Float, color: Int): Bitmap {
     val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val inset = strokePx / 2
-    val bounds = RectF(inset, inset, sizePx - inset, sizePx - inset)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = strokePx
-        strokeCap = Paint.Cap.ROUND
-        this.color = Track.toArgb()
-    }
-    canvas.drawArc(bounds, ARC_START, ARC_SWEEP, false, paint)
-    if (fraction > 0f) {
-        paint.color = color
-        canvas.drawArc(bounds, ARC_START, ARC_SWEEP * fraction, false, paint)
-    }
+    drawGaugeArc(Canvas(bitmap), sizePx.toFloat(), strokePx, fraction, Track.toArgb(), color)
     return bitmap
 }
 

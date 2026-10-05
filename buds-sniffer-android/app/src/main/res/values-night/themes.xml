@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Dark window background so launching in dark mode doesn't flash white before Compose draws. -->
+    <style name="Theme.BudsSniffer" parent="android:Theme.Material.NoActionBar" />
+</resources>
