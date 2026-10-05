@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">BudsSniffer</string>
+    <string name="widget_description">Earbuds and case battery</string>
+</resources>
