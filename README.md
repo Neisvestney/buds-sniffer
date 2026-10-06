@@ -1,6 +1,15 @@
-# BudsSniffer
+<p align="center">
+    <img width="150" height="150" src="docs/images/logo.png" alt="Logo">
+    <h1 align="center"><b>BudsSniffer</b></h1>
+    <p align="center">
+        Battery levels (left / right / case) for <b>Redmi Buds clones built on JieLi chips</b> — in the app, on a home screen widget and in a notification.
+    </p>
+</p>
+<br/>
 
-Battery levels (left / right / case) for **Redmi Buds clones built on JieLi chips** — in the app, on a home screen widget and in a notification.
+## Overview
+
+![Widget demo](docs/images/widget_demo.jpg)
 
 Such earbuds look like Xiaomi ones and even send Xiaomi-style advertisements, but inside they are generic JieLi hardware. They don't work properly with official Xiaomi apps or the Xiaomi system integration, and on other phones you only get whatever the standard Bluetooth battery level reports, if anything. BudsSniffer bypasses all that and talks JieLi's own RCSP protocol to the earbuds directly to get per-bud and case charge.
 

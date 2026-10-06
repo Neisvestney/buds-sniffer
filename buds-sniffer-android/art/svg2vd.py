@@ -1,24 +1,29 @@
-"""Converts art/ic_launcher.svg (CorelDRAW export) into the adaptive launcher icon drawables.
+"""Converts art/ic_launcher.svg (CorelDRAW export) into the adaptive launcher icon drawables and the README logo.
 
 Usage: python art/svg2vd.py [src.svg]
 Uses the variant drawn on the 10800x10800 canvas: a background <rect> followed by a <g> of class-filled paths,
 optionally wrapped in clip-path groups. Off-canvas variants are ignored.
 Monochrome = the first (body) path with light details inside it cut out, plus light details outside it kept solid.
-Requires shapely (pip install shapely) to merge overlapping holes.
+README logo (docs/images/logo.png) = the launcher-visible zone (inner 72 of 108dp) with rounded corners.
+Requires shapely and Pillow (pip install shapely pillow).
 """
 import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from PIL import Image, ImageChops, ImageColor, ImageDraw
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "art" / "ic_launcher.svg"
 RES = ROOT / "app/src/main/res/drawable"
+LOGO = ROOT.parent / "docs/images/logo.png"
 NS = "{http://www.w3.org/2000/svg}"
 SIZE = 10800
+SAFE = SIZE // 6
+LOGO_PX, SUPERSAMPLE = 512, 4
 
 root = ET.parse(SRC).getroot()
 classes = dict(re.findall(r"\.(\w+)\s*\{fill:([^}]+)\}", root.find(f"{NS}defs/{NS}style").text))
@@ -204,3 +209,36 @@ path(out, "#FFFFFFFF", body.get("d") + " " + merge_overlaps(holes), "    ", even
 for d in solid:
     path(out, "#FFFFFFFF", d, "    ")
 write("ic_launcher_monochrome.xml", out)
+
+px = LOGO_PX * SUPERSAMPLE
+scale = px / (SIZE - 2 * SAFE)
+
+
+def mask(d):
+    """evenOdd fill (the SVG's root fill-rule): XOR of the subpath polygons."""
+    m = Image.new("L", (px, px))
+    for s in subpaths(d):
+        layer = Image.new("L", (px, px))
+        ImageDraw.Draw(layer).polygon([((x - SAFE) * scale, (y - SAFE) * scale) for x, y in flatten(s)], fill=255)
+        m = ImageChops.difference(m, layer)
+    return m
+
+
+def rasterize(img, el, clip=None):
+    for c in el:
+        if c.tag == NS + "path" and fill(c):
+            m = mask(c.get("d"))
+            img.paste(ImageColor.getrgb(fill(c)), mask=ImageChops.multiply(m, clip) if clip else m)
+        elif c.tag == NS + "g":
+            cd = clip_d(c)
+            sub = mask(cd) if cd else None
+            rasterize(img, c, ImageChops.multiply(sub, clip) if sub and clip else sub or clip)
+
+
+img = Image.new("RGBA", (px, px), ImageColor.getrgb(fill(bg)))
+rasterize(img, art)
+corners = Image.new("L", (px, px))
+ImageDraw.Draw(corners).rounded_rectangle((0, 0, px - 1, px - 1), radius=px * 0.29, fill=255)
+img.putalpha(corners)
+img.resize((LOGO_PX, LOGO_PX), Image.LANCZOS).save(LOGO, optimize=True)
+print(LOGO)
