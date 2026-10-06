@@ -17,6 +17,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import io.github.neisvestney.budssniffer.MainActivity
 import io.github.neisvestney.budssniffer.R
+import io.github.neisvestney.budssniffer.ble.isClassicConnected
 import io.github.neisvestney.budssniffer.buds.BatteryRepository
 import io.github.neisvestney.budssniffer.buds.BudsBattery
 import io.github.neisvestney.budssniffer.buds.LinkStatus
@@ -105,6 +106,7 @@ class BudsService : Service() {
                     link.open(this)
                     link.authenticate()
                     setLink(LinkStatus.Connected)
+                    heldByClassic = false
                     backoffMs = INITIAL_BACKOFF_MS
                     for (p in link.packets) {
                         if (p.opcode != AdvInfo.CMD_NOTIFY_ADV_INFO) continue
@@ -121,9 +123,30 @@ class BudsService : Service() {
                 Log.w(TAG, "link failed: ${e.message}")
             }
             link.close()
+            if (heldByClassic && !isClassicConnected(this, device)) {
+                Log.d(TAG, "classic gone while reconnecting, stopping")
+                stop(this)
+                return
+            }
             setLink(LinkStatus.Connecting)
             delay(backoffMs)
             backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+        }
+    }
+
+    // Set when CDM reported the buds gone while classic was still up; cleared once RCSP reconnects.
+    private var heldByClassic = false
+
+    private fun stopUnlessClassicConnected() {
+        val address = address ?: return stop(this)
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: return stop(this)
+        scope.launch {
+            if (isClassicConnected(this@BudsService, adapter.getRemoteDevice(address))) {
+                Log.d(TAG, "presence lost but classic is up, keep reconnecting")
+                heldByClassic = true
+            } else {
+                stop(this@BudsService)
+            }
         }
     }
 
@@ -234,6 +257,12 @@ class BudsService : Service() {
                     .putExtra(EXTRA_ADDRESS, address)
                     .putExtra(EXTRA_FORCE, force),
             )
+        }
+
+        // CDM treats a drop of any ACL as disconnect, including our own LE link the buds cut on a TWS role switch.
+        fun presenceLost(context: Context) {
+            val service = owner ?: return stop(context)
+            service.stopUnlessClassicConnected()
         }
 
         fun stop(context: Context) {

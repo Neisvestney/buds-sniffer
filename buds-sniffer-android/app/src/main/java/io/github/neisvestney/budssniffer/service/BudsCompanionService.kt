@@ -25,7 +25,7 @@ class BudsCompanionService : CompanionDeviceService() {
         when (event.event) {
             DevicePresenceEvent.EVENT_BT_CONNECTED, DevicePresenceEvent.EVENT_BLE_APPEARED ->
                 addressOf(event.associationId)?.let { BudsService.start(this, it) }
-            DevicePresenceEvent.EVENT_BT_DISCONNECTED -> BudsService.stop(this)
+            DevicePresenceEvent.EVENT_BT_DISCONNECTED -> BudsService.presenceLost(this)
             DevicePresenceEvent.EVENT_ASSOCIATION_REMOVED -> {
                 BudsService.stop(this)
                 runBlocking { BatteryRepository.clear(this@BudsCompanionService) }
@@ -45,7 +45,7 @@ class BudsCompanionService : CompanionDeviceService() {
     @Deprecated("Deprecated in Java")
     override fun onDeviceDisappeared(associationInfo: AssociationInfo) {
         Log.d(TAG, "disappeared ${associationInfo.deviceMacAddress}")
-        BudsService.stop(this)
+        BudsService.presenceLost(this)
     }
 
     private fun addressOf(associationId: Int): String? {

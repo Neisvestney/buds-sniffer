@@ -155,6 +155,7 @@ response: status comes in place of sn, followed by sn
   - Wear detection (the sensor exists) is not reflected in `0xC2`.
   - PID `0x0033` vs `0x000A` from SDP — doesn't match.
 - **`op 0xC4`** (`flags C0`, expects a response) with parameter `03` = "reconnect request" (per JieLi docs, `onDeviceRequestOp`). Arrived when putting the right bud into the case; 60 ms later the LE link dropped; reconnecting to the same address worked.
+  - 2026-10-06: also sent on a TWS role switch (left bud, the master, taken out of the case while the right one was worn): `0xC4 03`, ~150 ms later the buds terminate LE (`Reason=19`), classic A2DP/HFP stays up. CDM reports this LE ACL drop as `EVENT_BT_DISCONNECTED` / `onDeviceDisappeared`; its "connected" event is likewise triggered by our own GATT connect. The following BLE sighting is swallowed ("already present"), so nothing restarts the app — it has to check classic itself before stopping.
 - In the background without an FGS, One UI freezes the process (the log stream stops ~25 s after going to the background).
 - The opcodes for `GetADVInfo` / `SetDeviceNotifyADVInfo` from the JieLi SDK are unknown — look in `jl_bluetooth_rcsp_*.aar`.
 
