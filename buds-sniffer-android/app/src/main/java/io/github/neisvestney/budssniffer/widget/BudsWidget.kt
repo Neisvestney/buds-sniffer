@@ -55,6 +55,7 @@ import androidx.glance.visibility
 import io.github.neisvestney.budssniffer.MainActivity
 import io.github.neisvestney.budssniffer.R
 import io.github.neisvestney.budssniffer.buds.BatteryRepository
+import io.github.neisvestney.budssniffer.buds.BudLevel
 import io.github.neisvestney.budssniffer.buds.BudsBattery
 import io.github.neisvestney.budssniffer.buds.LinkStatus
 import io.github.neisvestney.budssniffer.ui.gauge.GaugeSpec
@@ -74,6 +75,13 @@ private val Track = Foreground.copy(alpha = GaugeSpec.TRACK_ALPHA)
 // Oversized on purpose: the outline radius is clamped to half the height, giving a stadium.
 private val PillRadius = 100.dp
 
+private val PreviewBattery = BudsBattery(
+    left = BudLevel(80, charging = false),
+    right = BudLevel(75, charging = false),
+    case = BudLevel(55, charging = true),
+    updatedAt = 0,
+)
+
 private data class FlipperState(val hidden: Boolean, val layout: Int)
 
 open class BudsWidget(private val hideWhenIdle: Boolean = false) : GlanceAppWidget() {
@@ -92,6 +100,11 @@ open class BudsWidget(private val hideWhenIdle: Boolean = false) : GlanceAppWidg
                 Pill(battery, live, GlanceModifier.appWidgetBackground())
             }
         }
+    }
+
+    // Auto-hide is shown dimmed in the picker, hinting it only comes alive while the buds are connected.
+    override suspend fun providePreview(context: Context, widgetCategory: Int) {
+        provideContent { Pill(PreviewBattery, live = !hideWhenIdle, GlanceModifier.appWidgetBackground()) }
     }
 
     // RemoteViews can't animate on their own; ViewFlipper plays its in/out animations when the host reapplies.
