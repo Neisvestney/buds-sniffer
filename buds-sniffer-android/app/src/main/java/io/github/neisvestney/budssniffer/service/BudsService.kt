@@ -192,8 +192,11 @@ class BudsService : Service() {
         }
 
         if (status != LinkStatus.Idle) showStatus()
-        // The widget greys out levels while not connected; its Glance session may be gone, so push a refresh.
-        if ((previous == LinkStatus.Connected) != (status == LinkStatus.Connected)) {
+        // The widget greys out levels while not connected (the auto-hide one vanishes when idle);
+        // its Glance session may be gone, so push a refresh.
+        val widgetChanged = (previous == LinkStatus.Connected) != (status == LinkStatus.Connected) ||
+            (previous == LinkStatus.Idle) != (status == LinkStatus.Idle)
+        if (widgetChanged) {
             val app = applicationContext
             refreshScope.launch { BudsWidget.refresh(app) }
         }

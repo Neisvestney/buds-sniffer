@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">BudsSniffer</string>
     <string name="widget_description">Earbuds and case battery</string>
+    <string name="widget_auto_hide_description">Earbuds and case battery, invisible while disconnected</string>
 </resources>
