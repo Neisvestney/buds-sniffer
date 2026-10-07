@@ -37,7 +37,7 @@ object GaugeSpec {
     const val ARC_SWEEP = 220f
 }
 
-enum class BudSlot(@DrawableRes val icon: Int, val label: String) {
+enum class BudSlot(@param:DrawableRes val icon: Int, val label: String) {
     Left(R.drawable.ic_widget_bud_left, "Left"),
     Right(R.drawable.ic_widget_bud_right, "Right"),
     Case(R.drawable.ic_widget_case, "Case");

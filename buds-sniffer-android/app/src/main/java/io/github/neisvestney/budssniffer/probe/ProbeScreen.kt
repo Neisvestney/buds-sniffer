@@ -1,6 +1,7 @@
 package io.github.neisvestney.budssniffer.probe
 
 import android.Manifest
+import android.content.ClipData
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,19 +30,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.neisvestney.budssniffer.buds.summary
+import kotlinx.coroutines.launch
 
 private val PERMISSIONS = arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
 
@@ -136,12 +139,16 @@ private fun ControlsSection(vm: ProbeViewModel) {
 @Composable
 private fun LogSection(vm: ProbeViewModel, modifier: Modifier) {
     val log by vm.log.collectAsState()
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     LaunchedEffect(log.size) { if (log.isNotEmpty()) listState.animateScrollToItem(log.lastIndex) }
 
     Row {
-        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(log.joinToString("\n"))) }) { Text("Copy log") }
+        OutlinedButton(onClick = {
+            val clip = ClipData.newPlainText("probe log", log.joinToString("\n"))
+            scope.launch { clipboard.setClipEntry(ClipEntry(clip)) }
+        }) { Text("Copy log") }
         OutlinedButton(onClick = { vm.clearLog() }, modifier = Modifier.padding(start = 8.dp)) { Text("Clear") }
     }
     LazyColumn(modifier.fillMaxWidth(), state = listState) {
