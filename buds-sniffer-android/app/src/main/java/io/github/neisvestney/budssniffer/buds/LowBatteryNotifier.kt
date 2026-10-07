@@ -2,8 +2,6 @@ package io.github.neisvestney.budssniffer.buds
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -14,13 +12,13 @@ import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import io.github.neisvestney.budssniffer.MainActivity
+import io.github.neisvestney.budssniffer.NotificationChannels
 import io.github.neisvestney.budssniffer.R
 
 // Alerts once per discharge cycle and per bud; re-arms after charging or recovering above the threshold.
 object LowBatteryNotifier {
     const val THRESHOLD = 20
     private const val REARM_MARGIN = 5
-    private const val CHANNEL_ID = "low_battery"
 
     private enum class Side(val label: String, val notificationId: Int) {
         Left("Left", 2001),
@@ -58,8 +56,7 @@ object LowBatteryNotifier {
 
     @SuppressLint("MissingPermission")
     private fun notify(context: Context, side: Side, percent: Int) {
-        ensureChannel(context)
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, NotificationChannels.LOW_BATTERY)
             .setSmallIcon(R.drawable.ic_stat_buds)
             .setContentTitle("${side.label} earbud: $percent%")
             .setContentText("Battery is running low")
@@ -72,10 +69,5 @@ object LowBatteryNotifier {
             )
             .build()
         NotificationManagerCompat.from(context).notify(side.notificationId, notification)
-    }
-
-    private fun ensureChannel(context: Context) {
-        val channel = NotificationChannel(CHANNEL_ID, "Low battery", NotificationManager.IMPORTANCE_HIGH)
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 }

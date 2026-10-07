@@ -2,7 +2,6 @@ package io.github.neisvestney.budssniffer.service
 
 import android.annotation.SuppressLint
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
@@ -16,6 +15,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import io.github.neisvestney.budssniffer.MainActivity
+import io.github.neisvestney.budssniffer.NotificationChannels
 import io.github.neisvestney.budssniffer.R
 import io.github.neisvestney.budssniffer.ble.isClassicConnected
 import io.github.neisvestney.budssniffer.buds.BatteryRepository
@@ -45,15 +45,6 @@ class BudsService : Service() {
     private var address: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.deleteNotificationChannel(OLD_CHANNEL_ID)
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Background connection", NotificationManager.IMPORTANCE_MIN),
-        )
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val newAddress = intent?.getStringExtra(EXTRA_ADDRESS)
@@ -217,7 +208,7 @@ class BudsService : Service() {
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, NotificationChannels.BACKGROUND)
             .setSmallIcon(R.drawable.ic_stat_buds)
             .setContentTitle(text)
             .setContentIntent(open)
@@ -235,8 +226,6 @@ class BudsService : Service() {
 
     companion object {
         private const val TAG = "BudsService"
-        private const val CHANNEL_ID = "buds_background"
-        private const val OLD_CHANNEL_ID = "buds_link"
         private const val NOTIFICATION_ID = 1001
         private const val INITIAL_BACKOFF_MS = 2_000L
         private const val MAX_BACKOFF_MS = 60_000L
